@@ -7,5 +7,5 @@ Pod::Spec.new do |s|
     s.license                 = { :type => 'MIT', :file => 'LICENSE' }
     s.platform                = :ios, '10.0'
     s.source                  = { :git => 'https://github.com/LiveSmartDev/SesameSDK_iOS.git', :tag => s.version.to_s }
-    s.source_files            = 'SesameSDK/SesameSDK.h'
+    s.source_files            = 'SesameSDK/SesameSDK.h', 'Shared/**/*.swift', 'SesameSDK/*.swift', 'SesameWatchKitSDK/*.swift', 'SesameWatchKitSDK/*.h'
 end
