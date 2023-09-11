@@ -1,18 +1,15 @@
 Pod::Spec.new do |s|
     s.name                    = 'SesameSDK'
-    s.version                 = '2.0.3'
+    s.version                 = '3.0.0'
     s.summary                 = 'SesameSDK summary.'
     s.homepage                = 'https://jp.candyhouse.co'
 
     s.author                  = { 'SesameSDK' => 'developers@candyhouse.co' }
     s.license                 = { :type => 'MIT', :file => 'LICENSE' }
 
-    s.platform                = :ios
-    s.source                  = { :http => 'https://sesame-ios-sdk-license.s3-ap-northeast-1.amazonaws.com/LICENSE.zip' }
+    s.platform                = :ios, '10.0'
+    s.source                = { :git => 'https://github.com/LiveSmartDev/SesameSDK_iOS.git', :tag => s.version.to_s }
+    s.source_files          = 'SesameSDK/SesameSDK.h'
 
-    s.ios.deployment_target   = '10.0'
-    s.ios.vendored_frameworks = 'SesameSDK.framework'
-    s.dependency "AWSCore", '2.22.0'
-    s.dependency "AWSAPIGateway", '2.22.0'
-    s.dependency "AWSIoT", '2.22.0'
+  end
 end
