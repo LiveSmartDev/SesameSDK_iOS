@@ -7,5 +7,7 @@ Pod::Spec.new do |s|
     s.license                 = { :type => 'MIT', :file => 'LICENSE' }
     s.platform                = :ios, '10.0'
     s.source                  = { :git => 'https://github.com/LiveSmartDev/SesameSDK_iOS.git', :tag => s.version.to_s }
-    s.source_files            = 'SesameSDK/*.{h,swift}', 'Shared/**/*.{h,c,xcdatamodeld,swift}'
+    s.source_files            = 'SesameSDK/*.{h,swift}', 'Shared/**/*.{h,c,swift}', 'Shared/DB/CHDeviceModel.xcdatamodeld'
+    s.resources               = ['Shared/DB/CHDeviceModel.xcdatamodeld']
+    s.preserve_paths          = 'Shared/DB/CHDeviceModel.xcdatamodeld'
 end
