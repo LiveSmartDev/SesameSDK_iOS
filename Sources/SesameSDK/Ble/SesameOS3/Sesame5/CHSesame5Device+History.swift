@@ -34,8 +34,10 @@ extension CHSesame5Device {
                         if  historyOpType == .WM2 {
                             historyType = Sesame2HistoryTypeEnum.WM2_LOCK
                         }
-                        guard hisContent.count > originalTagCount else { return }
-                        hisContent = originalTagCount.data + hisContent[1...originalTagCount].copyData
+                        guard hisContent.count > originalTagCount,
+                              let content = hisContent[safeBound:1...Int(originalTagCount)]
+                        else { return }
+                        hisContent = originalTagCount.data + content.copyData
                     }
                     
                     if(historyType == .BLE_UNLOCK){
@@ -49,8 +51,10 @@ extension CHSesame5Device {
                         if  historyOpType == .WM2 {
                             historyType = Sesame2HistoryTypeEnum.WM2_UNLOCK
                         }
-                        guard hisContent.count > originalTagCount else { return }
-                        hisContent = originalTagCount.data + hisContent[1...originalTagCount].copyData
+                        guard hisContent.count > originalTagCount,
+                              let content = hisContent[safeBound:1...Int(originalTagCount)]
+                        else { return }
+                        hisContent = originalTagCount.data + content.copyData
                     }
 
                     let chHistoryEvent = CHSesame5HistoryEvent(type:historyType,time:UInt64(timestampInt32)*1000,recordID:record_id_Int32,content:hisContent,parameter:mechStatusData) // Event用在post
