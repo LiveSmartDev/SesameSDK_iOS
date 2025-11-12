@@ -10,7 +10,7 @@ import Foundation
 
 public struct CHGuestKey: Codable {
     public let guestKeyId: String
-    public var keyName: String
+    public var keyName: String?
     
     enum CodingKeys: String, CodingKey {
         case guestKeyId

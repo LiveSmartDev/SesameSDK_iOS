@@ -18,13 +18,16 @@ extension CHSesameBike2 {
     }
 }
 
-
+/*
+MechStatus:機械狀態
+*/
 struct CHSesameBike2MechStatus: CHSesameProtocolMechStatus {
-    let battery: UInt16
-    let flags: UInt8 
+    let battery: UInt16 // 第一與第二個byte
+    let flags: UInt8 // 拆開byte用
     var data: Data {battery.data + flags.data}
     var isInLockRange: Bool { return flags & 2 > 0 }
     var isStop: Bool? { return flags & 4 > 0 }
+
 
     func getBatteryVoltage() -> Float {
         return Float(battery) * 2.0 / 1000.0

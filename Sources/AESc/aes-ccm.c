@@ -144,7 +144,7 @@ static void aes_ccm_decr_auth(void *aes, size_t M, u8 *a, const u8 *auth, u8 *t)
 
 
 /* AES-CCM with fixed L=2 and aad_len <= 30 assumption */
-__attribute__ ((visibility ("default"))) int aes_ccm_ae(const u8 *key, size_t key_len, const u8 *nonce,
+int aes_ccm_ae(const u8 *key, size_t key_len, const u8 *nonce,
                size_t M, const u8 *plain, size_t plain_len,
                const u8 *aad, size_t aad_len, u8 *crypt, u8 *auth)
 {
@@ -174,7 +174,7 @@ __attribute__ ((visibility ("default"))) int aes_ccm_ae(const u8 *key, size_t ke
 
 
 /* AES-CCM with fixed L=2 and aad_len <= 30 assumption */
-__attribute__ ((visibility ("default"))) int aes_ccm_ad(const u8 *key, size_t key_len, const u8 *nonce,
+int aes_ccm_ad(const u8 *key, size_t key_len, const u8 *nonce,
                size_t M, const u8 *crypt, size_t crypt_len,
                const u8 *aad, size_t aad_len, const u8 *auth, u8 *plain)
 {

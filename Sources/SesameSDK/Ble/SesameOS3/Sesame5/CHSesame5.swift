@@ -8,21 +8,20 @@
 
 import CoreBluetooth
 
+// https://github.com/CANDY-HOUSE/API_document/blob/master/SesameOS3/4_history.md
 public protocol CHSesame5Delegate: CHDeviceStatusDelegate {
-    func onHistoryReceived(device: CHSesame5, result: Result<CHResultState<[CHSesame5History]>, Error>)
+    func onHistoryReceived(device: CHSesame5, result: Result<CHResultState<Data>, Error>)
 }
 public extension CHSesame5Delegate {
-    func onHistoryReceived(device: CHSesame5, result: Result<CHResultState<[CHSesame5History]>, Error>) {}
+    func onHistoryReceived(device: CHSesame5, result: Result<CHResultState<Data>, Error>) {}
 }
 public protocol CHSesame5: CHSesameLock {
     var mechSetting: CHSesame5MechSettings? { get }
     var opsSetting: CHSesame5OpsSettings? { get }
-    func toggle(result: @escaping (CHResult<CHEmpty>))
     func getVersionTag(result: @escaping (CHResult<String>))
     func lock(historytag:Data? ,result: @escaping (CHResult<CHEmpty>))
     func unlock(historytag:Data? ,result: @escaping (CHResult<CHEmpty>))
     func toggle(historytag:Data? ,result: @escaping (CHResult<CHEmpty>))
-    func getHistories(cursor: UInt?, _ result: @escaping CHResult<CHSesame5HistoryPayload>)
     func autolock(historytag:Data? ,delay: Int, result: @escaping (CHResult<Int>))
     func configureLockPosition(lockTarget: Int16, unlockTarget: Int16,result: @escaping (CHResult<CHEmpty>))
     func magnet(result: @escaping (CHResult<CHEmpty>))
@@ -30,16 +29,17 @@ public protocol CHSesame5: CHSesameLock {
 }
 
 extension CHSesame5 {
-    public func lock(result: @escaping (CHResult<CHEmpty>)) {
-        lock(historytag: nil, result: result)
+    public func lock(historytag:Data? ,result: @escaping (CHResult<CHEmpty>)) {
+        
+        lock(historytag: historytag, result: result)
     }
 
-    public func unlock(result: @escaping (CHResult<CHEmpty>)) {
-        unlock(historytag: nil, result: result)
+    public func unlock(historytag:Data? ,result: @escaping (CHResult<CHEmpty>)) {
+        unlock(historytag: historytag, result: result)
     }
 
-    public func toggle(result: @escaping (CHResult<CHEmpty>)) {
-        toggle(historytag: nil, result: result)
+    public func toggle(historytag:Data? ,result: @escaping (CHResult<CHEmpty>)) {
+        toggle(historytag: historytag, result: result)
     }
 
     public func enableAutolock(delay: Int, result: @escaping (CHResult<Int>)) {
@@ -55,6 +55,7 @@ public struct CHSesame5MechSettings {
     static func fromData(_ buf: Data) -> CHSesame5MechSettings? {
         let content = buf.copyData
         return  content.withUnsafeBytes({ $0.load(as: self) })
+//        return to(buf)
     }
     
     func isConfigured() -> Bool {

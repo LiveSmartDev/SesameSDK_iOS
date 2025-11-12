@@ -13,6 +13,7 @@ public class CHBluetoothCenter: NSObject {
     public static let shared = CHBluetoothCenter()
     public weak var delegate: CHBleManagerDelegate?{
         didSet{
+            L.d("CHBleManagerDelegate delegate")//todo check 會不會重覆連
             deviceMap =  deviceMap.filter{
                 $1.isRegistered
             }
@@ -21,7 +22,7 @@ public class CHBluetoothCenter: NSObject {
     public weak var statusDelegate: CHBleStatusDelegate?
 
     var centralManager: CBCentralManager!
-    var deviceMap: [String: CHDevice] = [:]
+    var deviceMap = SafeDictionary<String, CHDevice>()
 
     private var scanEnabled = false
     private var discoverUnregisterTimer: Timer?
@@ -34,6 +35,8 @@ public class CHBluetoothCenter: NSObject {
 
     override init() {
         super.init()
+//        centralManager = CBCentralManager(delegate: self, queue: DispatchQueue.global(qos: .background), options: [CBCentralManagerOptionShowPowerAlertKey: false])
+//        centralManager = CBCentralManager(delegate: self, queue: DispatchQueue.global(), options: [CBCentralManagerOptionShowPowerAlertKey: false])
         centralManager = CBCentralManager(delegate: self, queue: DispatchQueue(label: "CentralManager"), options: [CBCentralManagerOptionShowPowerAlertKey: false])
 
         discoverUnregisterTimer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(runTimedCode), userInfo: nil, repeats: true)
@@ -133,7 +136,7 @@ extension CHBluetoothCenter: CBCentralManagerDelegate {
 
     @objc private func runTimedCode() {
         delegate?.didDiscoverUnRegisteredCHDevices(
-            deviceMap.values.filter { $0.isRegistered == false && $0.rssi != nil }
+            deviceMap.filterValues { $0.isRegistered == false && $0.rssi != nil }
         )
     }
 }
@@ -143,7 +146,7 @@ extension CHBluetoothCenter: CBPeripheralDelegate {
     public func centralManager(_ central: CBCentralManager,  didDiscover peripheral: CBPeripheral,advertisementData: [String: Any],  rssi RSSI: NSNumber) {/// 收廣播
 
         let deviceAdv = BleAdv(advertisementData: advertisementData, rssi: RSSI, peripheral: peripheral)
-        guard let deviceId = BleAdv(advertisementData: advertisementData, rssi: RSSI, peripheral: peripheral).deviceID else { return }
+        guard let deviceId = deviceAdv.deviceID else { return }
         var device = deviceMap.getOrPut(deviceId.uuidString, backup: deviceAdv.productType!.chDeviceFactory()) as? CHDeviceUtil
         device?.advertisement = deviceAdv
 
@@ -222,19 +225,36 @@ public extension CHBleManagerDelegate {
     func didDiscoverUnRegisteredCHDevices(_ devices: [CHDevice]) {}
 }
 
+public enum MatterProductModel: UInt8 {
+    case doorLock = 0x00
+    case onOffSwitch = 0x01
+    case none = 0xff
+}
+
 public enum CHProductModel: UInt16 ,CaseIterable{
     case sesame2 = 0
     case wifiModule2 = 1
     case sesameBot = 2
     case bikeLock = 3
-    case bikeLock2 = 6
     case sesame4 = 4
     case sesame5 = 5
+    case bikeLock2 = 6
     case sesame5Pro = 7
     case openSensor = 8
     case sesameTouchPro = 9
     case sesameTouch = 10
     case bleConnector = 11
+    case hub3 = 13
+    case remote = 14
+    case remoteNano = 15
+    case sesame5US = 16
+    case sesameBot2 = 17
+    case sesameFacePro = 18
+    case sesameFace = 19
+    case sesame6Pro = 21
+    case sesameFaceProAI = 22
+    case sesameFaceAI = 23
+    case openSensor2 = 24
 
     public func deviceModel() -> String {///絕對不要動。ios/server/android必須一致
         switch self {
@@ -250,6 +270,17 @@ public enum CHProductModel: UInt16 ,CaseIterable{
         case .sesameTouchPro: return "ssm_touch_pro"
         case .sesameTouch: return "ssm_touch"
         case .bleConnector: return "BLE_Connector_1"
+        case .hub3: return "hub_3"
+        case .remote: return "remote"
+        case .remoteNano: return "remote_nano"
+        case .sesame5US: return "sesame_5_us"
+        case .sesameBot2: return "bot_2"
+        case .sesameFace: return "sesame_face"
+        case .sesameFacePro: return "sesame_face_Pro"
+        case .sesame6Pro: return "sesame_6_pro"
+        case .sesameFaceProAI: return "sesame_face_pro_ai"
+        case .sesameFaceAI: return "sesame_face_ai"
+        case .openSensor2: return "open_sensor_2"
         }
     }
     public func deviceModelName() -> String {//android必須一致
@@ -266,6 +297,17 @@ public enum CHProductModel: UInt16 ,CaseIterable{
         case .sesameTouchPro: return "Sesame Touch 1 Pro"
         case .sesameTouch: return "Sesame Touch 1"
         case .bleConnector: return "BLE Connector"
+        case .hub3: return "Hub 3"
+        case .remote: return "Remote"
+        case .remoteNano: return "Remote Nano"
+        case .sesame5US: return "Sesame 5 US"
+        case .sesameBot2: return "Sesame Bot 2"
+        case .sesameFace: return "Sesame Face 1"
+        case .sesameFacePro: return "Sesame Face 1 Pro"
+        case .sesame6Pro: return "Sesame 6 Pro"
+        case .sesameFaceProAI: return "Sesame Face 1 Pro AI"
+        case .sesameFaceAI: return "Sesame Face 1 AI"
+        case .openSensor2: return "Open Sensor 2"
         }
     }
 
@@ -277,13 +319,23 @@ public enum CHProductModel: UInt16 ,CaseIterable{
         case .sesameBot: return CHSesameBotDevice()
         case .bikeLock: return CHSesameBikeDevice()
         case .bikeLock2: return CHSesameBike2Device()
-        case .sesame5: return CHSesame5Device()
+        case .sesame5, .sesame5US: return CHSesame5Device()
         case .sesame5Pro: return CHSesame5Device()
         case .openSensor: return CHSesameTouchProDevice()
         case .sesameTouchPro: return CHSesameTouchProDevice()
-        case .sesameTouch: return CHSesameTouchProDevice()
-        case .bleConnector: return CHSesameTouchProDevice()
+        case .sesameTouch: return CHSesameTouchDevice()
+        case .remote, .remoteNano: return CHSesameTouchProDevice()
+        case .hub3: return CHHub3Device()
+        case .sesameBot2: return CHSesameBot2Device()
+        case .sesameFace:return CHSesameFaceDevice()
+        case .sesameFacePro:  return CHSesameFaceProDevice()
+        case .sesame6Pro:  return CHSesame5Device()
+        case .sesameFaceProAI:  return CHSesameFaceProDevice()
+        case .sesameFaceAI:  return CHSesameFaceProDevice()
+        case .bleConnector: return CHSesame5Device()
+        case .openSensor2: return CHSesameTouchProDevice()
         }
+     
     }
     static func deviceModeulFromString(_ type: String) -> CHProductModel? {
         for model in CHProductModel.allCases {
@@ -323,8 +375,8 @@ internal class BleAdv {
 
             isRegistered = manufacturerData[4] & 1 > 0
             adv_tag_b1 = manufacturerData[4] & 2 > 0
-
-            productType = CHProductModel.init(rawValue: manufacturerData[2...3].uint16)
+            // 保留位暫時統一廢棄
+            productType = CHProductModel.init(rawValue: UInt16(manufacturerData[2]))
             if let productModel = productType {
                 switch productModel{
 
@@ -346,12 +398,14 @@ internal class BleAdv {
                     } else {
                         deviceID = "00000000055afd810001000000000000".noDashtoUUID()
                     }
-
-                case .sesame5, .sesame5Pro, .sesameTouchPro, .sesameTouch, .bikeLock2, .openSensor, .bleConnector:
+                case .hub3:
+                    isRegistered = manufacturerData[3] & 1 > 0
+                    let macAddress = manufacturerData.copyData[4...9].toHexString()
+                    deviceID = ("00000000055afd810d00" + macAddress).noDashtoUUID()
+                case .sesame5, .sesame5Pro, .sesameTouchPro, .sesameTouch, .bikeLock2, .openSensor, .bleConnector, .remote, .remoteNano, .sesame5US, .sesameBot2, .sesameFace, .sesameFacePro, .sesame6Pro, .sesameFaceAI, .sesameFaceProAI, .openSensor2:
                     deviceID = manufacturerData[5...20].toHexString().noDashtoUUID()
                 }
             }
-
             if let txPowerLevel = advertisementData[CBAdvertisementDataTxPowerLevelKey] as? Int {
                 self.txPowerLevel = txPowerLevel
             }

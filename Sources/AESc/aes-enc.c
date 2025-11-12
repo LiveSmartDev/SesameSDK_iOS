@@ -92,7 +92,7 @@ d##3 = TE0(s##3) ^ TE1(s##0) ^ TE2(s##1) ^ TE3(s##2) ^ rk[4 * i + 3]
 }
 
 
-__attribute__ ((visibility ("default"))) void * aes_encrypt_init(const u8 *key, size_t len)
+__attribute__ ((visibility ("hidden"))) void * aes_encrypt_init(const u8 *key, size_t len)
 {
 	u32 *rk;
 	int res;
@@ -109,14 +109,14 @@ __attribute__ ((visibility ("default"))) void * aes_encrypt_init(const u8 *key, 
 }
 
 
-__attribute__ ((visibility ("default"))) void aes_encrypt(void *ctx, const u8 *plain, u8 *crypt)
+__attribute__ ((visibility ("hidden"))) void aes_encrypt(void *ctx, const u8 *plain, u8 *crypt)
 {
 	u32 *rk = ctx;
 	rijndaelEncrypt(ctx, rk[AES_PRIV_NR_POS], plain, crypt);
 }
 
 
-__attribute__ ((visibility ("default"))) void aes_encrypt_deinit(void *ctx)
+__attribute__ ((visibility ("hidden"))) void aes_encrypt_deinit(void *ctx)
 {
 	memset(ctx, 0, AES_PRIV_SIZE);
 	free(ctx);

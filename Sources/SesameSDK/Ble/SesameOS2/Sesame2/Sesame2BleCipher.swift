@@ -6,7 +6,6 @@
 //  Copyright © 2019 CandyHouse. All rights reserved.
 //
 import Foundation
-
 class Sesame2BleCipher {
     var encryptCounter: UInt64
     var decryptCounter: UInt64

@@ -8,7 +8,7 @@
 
 import Foundation
 
-extension NSError {
+public extension NSError {
     static let parseError = NSError(domain: "Sesame2SDK", code: 480, userInfo: ["message": "Data parse failed"])
     static let noContent = NSError(domain: "Sesame2SDK", code: 204, userInfo: ["message": "Response 204"])
     static let sizeError = NSError(domain: "Sesame2SDK", code: 600, userInfo: ["message": "21 bytes limit"])

@@ -6,10 +6,12 @@
 //  Copyright © 2023 CandyHouse. All rights reserved.
 //
 
+
+
 import CoreBluetooth
 
 class CHBaseDevice: NSObject, CBPeripheralDelegate {
-    var cmdCallBack: [SesameItemCode: SesameOS3ResponseCallback] = [:]//os3
+    var cmdCallBack = SafeDictionary<SesameItemCode, SesameOS3ResponseCallback?>()
     var onResponse: Sesame2ResponseCallback?//os2
     var onResponseWm2: WifiModule2ResponseCallback?
     var productModel: CHProductModel!
@@ -17,7 +19,7 @@ class CHBaseDevice: NSObject, CBPeripheralDelegate {
         didSet {
             self.semaphoreSesame = DispatchSemaphore(value: 0)
             self.semaphoreSesame?.signal()
-            cmdCallBack = [:]
+            self.cmdCallBack = SafeDictionary<SesameItemCode, SesameOS3ResponseCallback?>()
         }
     }
     var gattRxBuffer: SesameBleReceiver = SesameBleReceiver()
@@ -32,11 +34,13 @@ class CHBaseDevice: NSObject, CBPeripheralDelegate {
             }
         }
     }
-    var delegate: CHDeviceStatusDelegate?
+    weak var delegate: CHDeviceStatusDelegate?
+    var multicastDelegate = CHMulticastDelegate<CHDeviceStatusAndKeysDelegate>()
     var deviceStatus: CHDeviceStatus = .noBleSignal() {
         didSet{
             if oldValue != deviceStatus {
                 self.delegate?.onBleDeviceStatusChanged(device: self as! CHDevice, status: self.deviceStatus,shadowStatus: self.deviceShadowStatus)
+                notifyBleDeviceStatusChanged()
             }
         }
     }
@@ -44,6 +48,7 @@ class CHBaseDevice: NSObject, CBPeripheralDelegate {
         didSet {
             if deviceShadowStatus != oldValue {
                 delegate?.onBleDeviceStatusChanged(device: self as! CHDevice, status: deviceStatus,shadowStatus: deviceShadowStatus)
+                notifyBleDeviceStatusChanged()
             }
         }
     }
@@ -61,6 +66,7 @@ class CHBaseDevice: NSObject, CBPeripheralDelegate {
     var mechStatus: CHSesameProtocolMechStatus? {
         didSet {
             self.delegate?.onMechStatus(device: self as! CHDevice)
+            notifyMechStatusChanged()
         }
     }
     public func disconnect(result: @escaping (CHResult<CHEmpty>)) {
@@ -69,6 +75,9 @@ class CHBaseDevice: NSObject, CBPeripheralDelegate {
             return
         }
         if peripheral.state == .connected {
+            if let c = characteristic {
+                peripheral.setNotifyValue(false, for: c)
+            }
             CHBluetoothCenter.shared.centralManager.cancelPeripheralConnection(peripheral)
             L.d("⌚️","斷開藍牙",peripheral.state.rawValue)
             result(.success(CHResultStateBLE(input: CHEmpty())))
@@ -86,6 +95,7 @@ class CHBaseDevice: NSObject, CBPeripheralDelegate {
             return
         }
         guard let peripheral = peripheral else {
+//            L.d("connect", "no peripheral")
             result(.failure(NSError.peripheralEmpty))
             return
         }
@@ -107,10 +117,12 @@ class CHBaseDevice: NSObject, CBPeripheralDelegate {
 
     private func connect(_ peripheral: CBPeripheral, result: @escaping (CHResult<CHEmpty>)) {
         if deviceStatus == .receivedBle() {
+//            L.d("receivedBle", "connect")
             deviceStatus = .bleConnecting()
             CHBluetoothCenter.shared.centralManager.connect(peripheral, options: nil)
             result(.success(CHResultStateBLE(input: CHEmpty())))
         } else if deviceStatus == .noBleSignal() && CHBluetoothCenter.shared.centralManager.retrievePeripherals(withIdentifiers: [peripheral.identifier]).count > 0  {
+//            L.d("receivedBle", "reconnect")
             CHBluetoothCenter.shared.centralManager.cancelPeripheralConnection(peripheral)
             CHBluetoothCenter.shared.centralManager.connect(peripheral, options: nil)
             result(.success(CHResultStateBLE(input: CHEmpty())))
@@ -119,7 +131,9 @@ class CHBaseDevice: NSObject, CBPeripheralDelegate {
         }
     }
     public func dropKey(result: @escaping (CHResult<CHEmpty>))  {
+        L.d("dropKey!!!")
         delegate = nil
+        multicastDelegate.removeAll()
         CHDeviceCenter.shared.deleteDevice(self.deviceId)
         deviceStatus = .noBleSignal()
         disconnect(){res in}
@@ -147,6 +161,26 @@ class CHBaseDevice: NSObject, CBPeripheralDelegate {
         }
         if deviceStatus == .noBleSignal() {
             deviceStatus = .receivedBle()
+        }
+    }
+}
+
+extension CHBaseDevice {
+    func notifyBleDeviceStatusChanged() {
+        multicastDelegate.invokeDelegates { invokation in
+            invokation.onBleDeviceStatusChanged(device: self as! CHDevice, status: self.deviceStatus, shadowStatus: self.deviceShadowStatus)
+        }
+    }
+    
+    func notifyMechStatusChanged() {
+        multicastDelegate.invokeDelegates { invokation in
+            invokation.onMechStatus(device: self as! CHDevice)
+        }
+    }
+    
+    func notifySesameKeysChanged() {
+        multicastDelegate.invokeDelegates { invokation in
+            invokation.onSesame2KeysChanged(device: self as! CHWifiModule2, sesame2keys: [:])
         }
     }
 }

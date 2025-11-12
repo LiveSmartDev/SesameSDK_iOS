@@ -25,6 +25,7 @@ enum SesameItemCode: UInt8 {
     case IRER = 15
     case timeNoSig = 16
     case magnet = 17
+    case historyDelete = 18
     /*
      * Mechanic-dependent commands
      */
@@ -42,6 +43,25 @@ enum SesameItemCode: UInt8 {
     case DOOR_OPEN = 90
     case DOOR_CLOSE = 91
     case OPS_CONTROL = 92
+
+    /*
+     * Bot2
+     */
+    case scriptSetting = 93
+    case scriptSelect = 94
+    case scriptCurrent = 95
+    case scriptNameList = 96
+    case BOT2_ITEM_CODE_RUN_SCRIPT_0 = 170
+    case BOT2_ITEM_CODE_RUN_SCRIPT_1 = 171
+    case BOT2_ITEM_CODE_RUN_SCRIPT_2 = 172
+    case BOT2_ITEM_CODE_RUN_SCRIPT_3 = 173
+    case BOT2_ITEM_CODE_RUN_SCRIPT_4 = 174
+    case BOT2_ITEM_CODE_RUN_SCRIPT_5 = 175
+    case BOT2_ITEM_CODE_RUN_SCRIPT_6 = 176
+    case BOT2_ITEM_CODE_RUN_SCRIPT_7 = 177
+    case BOT2_ITEM_CODE_RUN_SCRIPT_8 = 178
+    case BOT2_ITEM_CODE_RUN_SCRIPT_9 = 179
+    case BOT2_ITEM_CODE_EDIT_SCRIPT = 181
 
     case addSesame = 101
     case pubKeySesame = 102
@@ -75,137 +95,81 @@ enum SesameItemCode: UInt8 {
     case SSM_OS3_PASSCODE_FIRST = 128
     case SSM_OS3_PASSCODE_MODE_GET = 129
     case SSM_OS3_PASSCODE_MODE_SET = 130
+    case REMOTE_NANO_ITEM_CODE_SET_TRIGGER_DELAYTIME = 190
+    case REMOTE_NANO_ITEM_CODE_PUB_TRIGGER_DELAYTIME = 191
 
+    // hub 3
+    case HUB3_ITEM_CODE_WIFI_SSID = 131
+    case HUB3_ITEM_CODE_SSID_FIRST = 132
+    case HUB3_ITEM_CODE_SSID_NOTIFY = 133
+    case HUB3_ITEM_CODE_SSID_LAST = 134
+    case HUB3_ITEM_CODE_WIFI_PASSWORD = 135
+    case HUB3_UPDATE_WIFI_SSID = 136
+    case HUB3_MATTER_PAIRING_CODE = 137
+    
+    // 添加密码
+    case SSM_OS3_PASSCODE_ADD = 138
+    
+    // 添加卡片
+    case SSM_OS3_CARD_ADD = 140
+    
+    case SSM_OS3_IR_MODE_SET = 143
+    case SSM_OS3_IR_CODE_CHANGE = 144
+    case SSM_OS3_IR_CODE_EMIT = 145
+    case SSM_OS3_IR_CODE_GET = 146
+    case SSM_OS3_IR_CODE_LAST = 147
+    case SSM_OS3_IR_CODE_FIRST = 148
+    case SSM_OS3_IR_CODE_DELETE = 149
+    case SSM_OS3_IR_MODE_GET = 150
+    case SSM_OS3_IR_CODE_NOTIFY = 151
+    case HUB3_MATTER_PAIRING_WINDOW = 153
+    
+    // 人脸
+    case SSM_OS3_FACE_CHANGE = 154
+    case SSM_OS3_FACE_DELETE = 155
+    case SSM_OS3_FACE_GET = 156
+    case SSM_OS3_FACE_NOTIFY = 157
+    case SSM_OS3_FACE_LAST = 158
+    case SSM_OS3_FACE_FIRST = 159
+    case SSM_OS3_FACE_MODE_GET = 160
+    case SSM_OS3_FACE_MODE_SET = 161
+    
+    // 手掌
+    case SSM_OS3_PALM_CHANGE = 162
+    case SSM_OS3_PALM_DELETE = 163
+    case SSM_OS3_PALM_GET = 164
+    case SSM_OS3_PALM_NOTIFY = 165
+    case SSM_OS3_PALM_LAST = 166
+    case SSM_OS3_PALM_FIRST = 167
+    case SSM_OS3_PALM_MODE_GET = 168
+    case SSM_OS3_PALM_MODE_SET = 169
+    
+    // 批量添加卡片
+    case STP_ITEM_CODE_CARDS_ADD = 182
+    
+    // 批量添加密码
+    case STP_ITEM_CODE_PASSCODES_ADD = 184
+    
+    case SSM_OS3_FACE_MODE_DELETE_NOTIFY = 192
+    case SSM_OS3_PALM_MODE_DELETE_NOTIFY = 193
+    
+    // 雷达灵敏度
+    case SSM_OS3_RADAR_PARAM_SET = 200
+    case SSM_OS3_RADAR_PARAM_PUBLISH = 201
+    
+    // 重载/轻载 电压值mv
+    case SSM3_ITEM_CODE_BATTERY_VOLTAGE = 202
 }
 
 extension SesameItemCode {
 
     var plainName: String {
-        switch self {
-        case .none:
-            return "none"
-        case .registration:
-            return "registration"
-        case .login:
-            return "login"
-        case .user:
-            return "user"
-        case .history:
-            return "history"
-        case .versionTag:
-            return "versionTag"
-        case .disconnectRebootNow:
-            return "disconnectRebootNow"
-        case .enableDFU:
-            return "enableDFU"
-        case .time:
-            return "time"
-        case .bleConnectionParam:
-            return "bleConnectionParam"
-        case .bleAdvParam:
-            return "bleAdvParam"
-        case .autolock:
-            return "autolock"
-        case .serverAdvKick:
-            return "serverAdvKick"
-        case .mechSetting:
-            return "mechSetting"
-        case .mechStatus:
-            return "mechStatus"
-        case .lock:
-            return "lock"
-        case .unlock:
-            return "unlock"
-        case .moveTo:
-            return "moveTo"
-        case .driveDirection:
-            return "driveDirection"
-        case .stop:
-            return "stop"
-        case .detectDir:
-            return "detectDir"
-
-        case .sesame2Token:
-            return "sesame2Token"
-        case .initalization:
-            return "initalization"
-        case .IRER:
-            return "IRER"
-        case .timeNoSig:
-            return "timeNoSig"
-        case .magnet:
-            return "magnet"
-        case .toggle:
-            return "SSM2_ITEM_CODE_Toggle"
-        case .click:
-            return "CLICK"
-        case .addSesame:
-            return "addSesame"
-        case .pubKeySesame:
-            return "pubKeySesame"
-        case .removeSesame:
-            return "removeSesame"
-        case .reset:
-            return "reset"
-        case .notifyLockDown:
-            return "notifyLockDown"
-        case .SSM_OS3_CARD_CHANGE:
-            return "SSM_OS3_CARD_CHANGE"
-        case .SSM_OS3_CARD_DELETE:
-            return "SSM_OS3_CARD_DELETENGE"
-        case .SSM_OS3_CARD_GET:
-            return "SSM_OS3_CARD_GETCHANGE"
-        case .SSM_OS3_CARD_NOTIFY:
-            return "SSM_OS3_CARD_NOTIFYNGE"
-        case .SSM_OS3_CARD_LAST:
-            return "SSM_OS3_CARD_LASTHANGE"
-        case .SSM_OS3_CARD_FIRST:
-            return "SSM_OS3_CARD_FIRSTANGE"
-        case .SSM_OS3_CARD_MODE_GET:
-            return "SSM_OS3_CARD_MODE_GETE"
-        case .SSM_OS3_CARD_MODE_SET:
-            return "SSM_OS3_CARD_MODE_SETE"
-        case .SSM_OS3_FINGERPRINT_CHANGE:
-            return "SSM_OS3_FINGERPRINT_CHANGE"
-        case .SSM_OS3_FINGERPRINT_DELETE:
-            return "SSM_OS3_FINGERPRINT_DELETE"
-        case .SSM_OS3_FINGERPRINT_GET:
-            return "SSM_OS3_FINGERPRINT_GET"
-        case .SSM_OS3_FINGERPRINT_NOTIFY:
-            return "SSM_OS3_FINGERPRINT_NOTIFY"
-        case .SSM_OS3_FINGERPRINT_LAST:
-            return "SSM_OS3_FINGERPRINT_LAST"
-        case .SSM_OS3_FINGERPRINT_FIRST:
-            return "SSM_OS3_FINGERPRINT_FIRST"
-        case .SSM_OS3_FINGERPRINT_MODE_GET:
-            return "SSM_OS3_FINGERPRINT_MODE_GET"
-        case .SSM_OS3_FINGERPRINT_MODE_SET:
-            return "SSM_OS3_FINGERPRINT_MODE_SET"
-        case .SSM_OS3_PASSCODE_CHANGE:
-            return "SSM_OS3_PASSCODE_CHANGE"
-        case .SSM_OS3_PASSCODE_DELETE:
-            return "SSM_OS3_PASSCODE_DELETE"
-        case .SSM_OS3_PASSCODE_GET:
-            return "SSM_OS3_PASSCODE_GETGE"
-        case .SSM_OS3_PASSCODE_NOTIFY:
-            return "SSM_OS3_PASSCODE_NOTIFY"
-        case .SSM_OS3_PASSCODE_LAST:
-            return "SSM_OS3_PASSCODE_LASTE"
-        case .SSM_OS3_PASSCODE_FIRST:
-            return "SSM_OS3_PASSCODE_FIRST"
-        case .SSM_OS3_PASSCODE_MODE_GET:
-            return "SSM_OS3_PASSCODE_MODE_GET"
-        case .SSM_OS3_PASSCODE_MODE_SET:
-            return "SSM_OS3_PASSCODE_MODE_SET"
-        case .DOOR_OPEN:
-            return "DOOR_OPEN"
-        case .DOOR_CLOSE:
-            return "DOOR_CLOSE"
-        case .OPS_CONTROL:
-            return "OPS_CONTROL"
-        }
-
+       return String(describing: self)
     }
+}
+
+enum Hub3ItemCode: UInt8 {
+    case HUB3_ITEM_CODE_LED_DUTY = 92
 }
 
 enum SesameBleSegmentType: UInt8 {
@@ -268,6 +232,7 @@ class SesameBleReceiver {
     }
 
     func feed(_ input: Data) -> (type: SesameBleSegmentType, buffer: Data)? {
+        guard input.isEmpty == false else { return nil }
         let seg = input.prefix(MemoryLayout<UInt8>.size)
         let isStartFlag = seg.uint8 & 1
         let parsingType = seg.uint8 >> 1
@@ -338,6 +303,7 @@ public protocol CHSesameProtocolMechStatus {
     var isInUnlockRange : Bool { get }
     var isBatteryCritical: Bool { get }
     var isStop: Bool?  { get }
+    var isCritical: Bool?  { get }
     func getBatteryVoltage() -> Float
     func getBatteryPrecentage() -> Int
     
@@ -349,9 +315,10 @@ public extension CHSesameProtocolMechStatus{
     var isInUnlockRange: Bool { return false }
     var isInLockRange: Bool { return false }
     var isStop: Bool?  { return true }
+    var isCritical: Bool?  { return false }
     var position: Int16 {0}
     var target: Int16 {0}
-    var data: Data { return Data() } 
+    var data: Data { return Data() }
     func getBatteryPrecentage() -> Int { // [CHDeviceProtocol]共用電量計算曲線
         let voltage = getBatteryVoltage()
         let blocks: [Float] = [5.85, 5.82, 5.79, 5.76, 5.73, 5.70, 5.65, 5.60, 5.55, 5.50, 5.40, 5.20, 5.10, 5.0, 4.8, 4.6]
@@ -437,7 +404,8 @@ protocol CHDeviceUtil {
     var advertisement: BleAdv? { get set }
     var sesame2KeyData: CHDeviceKey? { get set }
     var deviceStatus: CHDeviceStatus { get set }
+//    var lastLiveTime: TimeInterval? { get set }
     var productModel: CHProductModel! { get set }
-//    func goIOT()
+    func goIOT()
     func login(token: String?)
 }

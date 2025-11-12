@@ -15,7 +15,7 @@ extension CHSesameBikeDevice {
             L.d("peripheral",peripheral?.identifier ?? "")
             result(.success(CHResultStateBLE(input: self.peripheral)))
         } else if isRegistered {
-            if checkBle(result) { return }
+            if !isBleAvailable(result) { return }
             var dfuConfi = Sesame2DFUConfiguration(enabled: true)
             let payload = Sesame2Payload(.update, .enableDFU, dfuConfi.toData())
 
@@ -42,11 +42,19 @@ extension CHSesameBikeDevice {
     }
 
     public func getVersionTag(result: @escaping (CHResult<String>))  {
-        if(checkBle(result)){return}
+        if(!isBleAvailable(result)){return}
+
         sendCommand(.init(.read, .versionTag)) { (payload) in
             if let tag = Sesame2VersionTag.fromData(payload.data) {
                 if payload.cmdResultCode == .success {
                     result(.success(CHResultStateNetworks(input: tag.gitRevision)))
+                    #if os(iOS)
+//                    if self.gitVersionCache() != tag.gitRevision {
+//                        CHIoTManager.shared.updateCHDeviceShadow(self, withParameters: ["v": tag.gitRevision])
+//                        self.setGitVersionCache(tag.gitRevision)
+//                    }
+//                    self.putSesameFW(tag.gitRevision) { _ in }
+                    #endif
                 } else {
                     result(.failure(self.errorFromResultCode(payload.cmdResultCode)))
                 }

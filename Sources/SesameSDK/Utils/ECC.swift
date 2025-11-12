@@ -5,9 +5,8 @@
 //  Created by Tse on 2020/04/20.
 //  Copyright © 2020 CandyHouse. All rights reserved.
 //
-import Foundation
-import Security
 
+import Foundation
 class ECC {
     static func generate() -> ECC {
 
@@ -73,8 +72,10 @@ class ECC {
 
 
         if(rollBackKey == nil){
+//            CandyhouseKeychainManager.shared.keychain.clear()
             return "0000000000000000000000000000".bytes
         }
+        // todo tse  secpubKey!   在鑰匙錯誤下。解包異常。
         let shared1 = SecKeyCopyKeyExchangeResult(rollBackKey!,
                                                   SecKeyAlgorithm.ecdhKeyExchangeStandard,
                                                   secpubKey!,
@@ -85,6 +86,14 @@ class ECC {
 
         return bytes
 
+    }
+    
+    public func havePubKey(remotePublicKey: [UInt8]) -> Bool {
+        return SecKeyCreateWithData(Data(hex: "04") + Data(remotePublicKey) as CFData, [
+                kSecAttrKeyType as String: kSecAttrKeyTypeEC,
+                kSecAttrKeyClass as String: kSecAttrKeyClassPublic,
+                SecKeyKeyExchangeParameter.requestedSize.rawValue as String: 32
+            ] as CFDictionary, nil) != nil
     }
 }
 

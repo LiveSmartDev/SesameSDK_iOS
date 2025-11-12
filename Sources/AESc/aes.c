@@ -778,7 +778,7 @@ const u8 rcons[] = {
  *
  * @return	the number of rounds for the given cipher key size.
  */
-__attribute__ ((visibility ("default"))) int rijndaelKeySetupEnc(u32 rk[], const u8 cipherKey[], int keyBits)
+__attribute__ ((visibility ("hidden"))) int rijndaelKeySetupEnc(u32 rk[], const u8 cipherKey[], int keyBits)
 {
 	int i;
 	u32 temp;
