@@ -58,5 +58,43 @@ final class CHSesameBotDevice: CHBaseDevice, CHSesameBot, CHDeviceUtil {
         }
     }
     
-    func goIOT() {}
+    
+    func goIOT() {
+        #if os(iOS)
+        CHIoTManager.shared.subscribeCHDeviceShadow(self) { [self] result in
+            switch result {
+            case .success(let content):
+
+                if let wm2s = content.data.wifiModule2s {
+                    if let wm2 = wm2s.filter({ $0.isConnected == true }).first {
+                        isConnectedByWM2 = wm2.isConnected
+                    } 
+                }
+                if let mechStatusData = content.data.mechStatus?.hexStringtoData(),
+                   let mechStatus = SesameBotMechStatus.fromData(mechStatusData) {
+                    if isConnectedByWM2 {
+                        self.deviceShadowStatus = mechStatus.isInLockRange ? .locked() : mechStatus.isInUnlockRange ? .unlocked() : .moved()
+                    }else{
+                        self.deviceShadowStatus = nil
+                    }
+
+                    if !self.isBleAvailable() {
+                        self.mechStatus = mechStatus
+                    }
+                }
+
+                self.delegate?.onBleDeviceStatusChanged(device: self, status: self.deviceStatus,shadowStatus: self.deviceShadowStatus)
+
+            case .failure(let error):
+                L.d(error)
+            }
+        }
+        #endif
+    }
+
+    deinit {
+        #if os(iOS)
+        CHIoTManager.shared.unsubscribeCHDeviceShadow(self)
+        #endif
+    }
 }

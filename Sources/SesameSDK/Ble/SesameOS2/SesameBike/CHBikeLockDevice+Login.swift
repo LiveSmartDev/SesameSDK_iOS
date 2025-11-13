@@ -74,7 +74,7 @@ extension CHSesameBikeDevice {
         let timestampData = Data(bytes: &timestamp,
                                  count: MemoryLayout.size(ofValue: timestamp))
         let cmdPayload = Sesame2Payload(.update, .timeNoSig, timestampData)
-        if (self.checkBle(result)) { return }
+        if (!self.isBleAvailable(result)) { return }
         sendCommand(cmdPayload) { (resp) in
             if resp.cmdResultCode == .success {
                 result(.success(CHResultStateBLE(input: CHEmpty())))

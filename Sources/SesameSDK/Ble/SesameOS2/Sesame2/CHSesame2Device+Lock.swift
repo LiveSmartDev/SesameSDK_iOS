@@ -6,15 +6,15 @@
 //  Copyright © 2019 CandyHouse. All rights reserved.
 //
 import Foundation
-
 extension CHSesame2Device {
     
     public func toggle(historytag: Data?, result: @escaping (CHResult<CHEmpty>))  {
         if deviceShadowStatus != nil,
+//           CHIoTManager.shared.awsIoTDataManager.getConnectionStatus() == .connected,
            deviceStatus.loginStatus == .unlogined {
-//            CHIoTManager.shared.sendCommandToWM2(.toggle, self) { _ in
-//                result(.success(CHResultStateNetworks(input: CHEmpty())))
-//            }
+            CHIoTManager.shared.sendCommandToWM2(.toggle, historytag ?? self.sesame2KeyData?.historyTag ?? Data(), self) { _ in
+                result(.success(CHResultStateNetworks(input: CHEmpty())))
+            }
             return
         }
         
@@ -33,13 +33,13 @@ extension CHSesame2Device {
            deviceStatus.loginStatus == .unlogined {
             L.d("📡 lock by IoT")
 //            L.d("⚠️ \(deviceId.uuidString) lock by IoT")
-//            CHIoTManager.shared.sendCommandToWM2(.lock, self) { _ in
-//                result(.success(CHResultStateNetworks(input: CHEmpty())))
-//            }
+            CHIoTManager.shared.sendCommandToWM2(.lock, historytag ?? self.sesame2KeyData?.historyTag ?? Data(), self) { _ in
+                result(.success(CHResultStateNetworks(input: CHEmpty())))
+            }
             return
         }
         
-        if (self.checkBle(result)) { return }
+        if (!self.isBleAvailable(result)) { return }
 //        L.d("📡 lock by ble")
 //        L.d("藍芽", "REQUEST", "下開鎖指令")
         sendCommand(.init(.async, .lock,tagCount_hisTag)) { responsePayload in
@@ -59,13 +59,13 @@ extension CHSesame2Device {
            deviceStatus.loginStatus == .unlogined {
             L.d("📡 unlock by IoT")
 //            L.d("⚠️ \(deviceId.uuidString) unlock by IoT")
-//            CHIoTManager.shared.sendCommandToWM2(.unlock, self) { _ in
-//                result(.success(CHResultStateNetworks(input: CHEmpty())))
-//            }
+            CHIoTManager.shared.sendCommandToWM2(.unlock, historytag ?? self.sesame2KeyData?.historyTag ?? Data(), self) { _ in
+                result(.success(CHResultStateNetworks(input: CHEmpty())))
+            }
             return
         }
         
-        if (self.checkBle(result)) { return }
+        if (!self.isBleAvailable(result)) { return }
 //        L.d("📡 unlock by ble")
 //        L.d("藍芽", "REQUEST", "下解鎖指令")
         
@@ -81,7 +81,7 @@ extension CHSesame2Device {
     }
     
     public func enableAutolock(historytag: Data?,delay: Int, result: @escaping (CHResult<Int>))  {
-        if(checkBle(result)){return}
+        if(!isBleAvailable(result)){return}
         var autolockSet = Sesame2Autolock(Int16(delay))
         let tagCount_hisTag = Data.createHistag(historytag ?? self.sesame2KeyData?.historyTag)
         let payload = autolockSet.toData() + tagCount_hisTag
@@ -94,7 +94,7 @@ extension CHSesame2Device {
     }
 
     public func getAutolockSetting(result: @escaping (CHResult<Int>))  {
-        if(checkBle(result)){return}
+        if(!isBleAvailable(result)){return}
 
         sendCommand(.init(.read, .autolock)) { (payload) in
             if let autolockSetting = Sesame2Autolock.fromData(payload.data) {
@@ -105,7 +105,7 @@ extension CHSesame2Device {
     }
 
     public func configureLockPosition(historytag: Data?,lockTarget: Int16, unlockTarget: Int16,result: @escaping (CHResult<CHEmpty>)) {
-        if(checkBle(result)){return}
+        if(!isBleAvailable(result)){return}
 
         var configure = CHSesame2LockPositionConfiguration(lockTarget: lockTarget, unlockTarget: unlockTarget)
         let tmpSetting = configure.toData()

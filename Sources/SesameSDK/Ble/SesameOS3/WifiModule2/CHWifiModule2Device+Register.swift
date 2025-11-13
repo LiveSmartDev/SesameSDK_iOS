@@ -57,7 +57,7 @@ extension CHWifiModule2Device {
     }
     
     func reset(result: @escaping (CHResult<CHEmpty>)) {
-        if checkBle(result) {
+        if !isBleAvailable(result) {
             result(.failure(NSError.resetDeviceError))
             return
         }

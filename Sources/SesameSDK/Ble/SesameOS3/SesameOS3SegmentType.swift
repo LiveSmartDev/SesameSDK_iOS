@@ -6,7 +6,6 @@
 //  Copyright © 2023 CandyHouse. All rights reserved.
 //
 import Foundation
-
 struct SesameOS3Payload {
     var itemCode: SesameItemCode
     var data: Data
@@ -30,9 +29,10 @@ struct SesameOS3PublishPayload {
     let itemCode: SesameItemCode
     let payload: Data
 
-    init(data: Data) {
+    init?(data: Data) {
+        guard data.count >= 1 else { return nil }
         var content = data.copyData
-        self.itemCode = SesameItemCode(rawValue: content[0...0].toUInt8())!
+        self.itemCode = SesameItemCode(rawValue: content[0...0].toUInt8()) ?? SesameItemCode.none
         self.payload = content[1...].copyData
 //        L.d("[ss5][pub]itemCode(4 bytes亂數為編號14)=>",itemCode.rawValue)
     }
@@ -42,8 +42,9 @@ struct SesameOS3CmdResponsePayload {
     let cmdItCode: SesameItemCode
     let cmdResultCode: SesameResultCode
     var data: Data
-    init(_ data: Data) {
-        self.cmdItCode = SesameItemCode(rawValue: data[0])!
+    init?(_ data: Data) {
+        guard data.count >= 2 else { return nil }
+        self.cmdItCode = SesameItemCode(rawValue: data[0]) ?? SesameItemCode.none
         self.cmdResultCode = SesameResultCode(rawValue: data[1])!
         self.data = data[2...].copyData
     }

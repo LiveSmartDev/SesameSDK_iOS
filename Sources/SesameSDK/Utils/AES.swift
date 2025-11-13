@@ -26,6 +26,7 @@ class AES {
                 ciphertextRef.deallocate()
                 authRef.deallocate()
             }
+            
             let ret = aes_ccm_ae(keyRef, key.count,
                                  nonceRef, tagLength,
                                  plaintextRef, plaintext.count,

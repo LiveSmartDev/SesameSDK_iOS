@@ -13,8 +13,9 @@ extension CHSesameBikeDevice {
     func parseNotifyPayload(_ data: Data) {
         let notify = Sesame2NotifyPayload(data: data)
         if notify.opCode == .publish {
-            let publishPayload = SesameOS3PublishPayload(data: notify.payload)
-            onBikeLockGattPublish(itemCode: publishPayload.itemCode, data: publishPayload.payload)
+            if let publishPayload = SesameOS3PublishPayload(data: notify.payload) {            
+                onBikeLockGattPublish(itemCode: publishPayload.itemCode, data: publishPayload.payload)
+            }
         }
         
         if notify.opCode == .response {
@@ -85,12 +86,9 @@ extension CHSesameBikeDevice {
         }
 
         if let data = gattTxBuffer?.getChunk() {
-            if data[0] > 0x01 {
-                self.peripheral!.writeValue(data, for: self.characteristic!, type: .withResponse)
-            } else {
-                self.peripheral!.writeValue(data, for: self.characteristic!, type: .withoutResponse)
-                transmit()
-            }
+            //data[0] > 0x01 Android那边实际测试情况可能会出现is true。两端一致，因此要屏蔽以下判断代码，只保留withoutResponse.
+            self.peripheral!.writeValue(data, for: self.characteristic!, type: .withoutResponse)
+            transmit()
         }
     }
 }

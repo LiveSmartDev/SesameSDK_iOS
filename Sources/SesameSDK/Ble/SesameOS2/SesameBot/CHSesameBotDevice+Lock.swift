@@ -12,9 +12,16 @@ extension CHSesameBotDevice {
     
     public func lock(historytag: Data? ,result: @escaping (CHResult<CHEmpty>))  {
         if deviceShadowStatus != nil,
-           deviceStatus.loginStatus == .unlogined { return }
+           deviceStatus.loginStatus == .unlogined {
+            L.d("📡 unlock by IoT")
+            CHIoTManager.shared.sendCommandToWM2(.lock, historytag ?? self.sesame2KeyData?.historyTag ?? Data(), self) { _ in
+                result(.success(CHResultStateNetworks(input: CHEmpty())))
+            }
+            return
+        }
         
-        if (self.checkBle(result)) { return }
+        if (!self.isBleAvailable(result)) { return }
+//        L.d("📡 unlock by ble")
         let tag = Data.createHistag(historytag ?? self.sesame2KeyData?.historyTag)
         sendCommand(.init(.async, .lock, tag)) { responsePayload in
             if responsePayload.cmdResultCode == .success {
@@ -27,9 +34,16 @@ extension CHSesameBotDevice {
     
     public func unlock(historytag: Data?,result: @escaping (CHResult<CHEmpty>))  {
         if deviceShadowStatus != nil,
-           deviceStatus.loginStatus == .unlogined { return }
+           deviceStatus.loginStatus == .unlogined {
+            L.d("📡 unlock by IoT")
+            CHIoTManager.shared.sendCommandToWM2(.unlock, historytag ?? self.sesame2KeyData?.historyTag ?? Data(), self) { _ in
+                result(.success(CHResultStateNetworks(input: CHEmpty())))
+            }
+            return
+        }
         
-        if (self.checkBle(result)) { return }
+        if (!self.isBleAvailable(result)) { return }
+//        L.d("📡 unlock by ble")
         let tag = Data.createHistag(historytag ?? self.sesame2KeyData?.historyTag)
         sendCommand(.init(.async, .unlock, tag)) { responsePayload in
             if responsePayload.cmdResultCode == .success {
@@ -42,9 +56,16 @@ extension CHSesameBotDevice {
     
     public func click(historytag: Data?,result: @escaping (CHResult<CHEmpty>))  {
         if deviceShadowStatus != nil,
-           deviceStatus.loginStatus == .unlogined {return}
+           deviceStatus.loginStatus == .unlogined {
+            L.d("📡 unlock by IoT")
+            CHIoTManager.shared.sendCommandToWM2(.click, historytag ?? self.sesame2KeyData?.historyTag ?? Data(), self) { _ in
+                result(.success(CHResultStateNetworks(input: CHEmpty())))
+            }
+            return
+        }
         
-        if (self.checkBle(result)) { return }
+        if (!self.isBleAvailable(result)) { return }
+//        L.d("📡 unlock by ble")
         let tag = Data.createHistag(historytag ?? self.sesame2KeyData?.historyTag)
         sendCommand(.init(.async, .click, tag)) { responsePayload in
             if responsePayload.cmdResultCode == .success {
@@ -59,10 +80,18 @@ extension CHSesameBotDevice {
         let tag = Data.createHistag(historytag ?? self.sesame2KeyData?.historyTag)
         #if os(iOS)
         if deviceShadowStatus != nil,
-           deviceStatus.loginStatus == .unlogined { return }
+           deviceStatus.loginStatus == .unlogined {
+            L.d("📡 unlock by IoT")
+            CHIoTManager.shared.sendCommandToWM2(.toggle, historytag ?? self.sesame2KeyData?.historyTag ?? Data(), self) { _ in
+                result(.success(CHResultStateBLE(input: CHEmpty())))
+            }
+            return
+        }
         #endif
         
-        if (self.checkBle(result)) { return }
+        if (!self.isBleAvailable(result)) { return }
+        L.d("📡 toggle by ble")
+
         if mechStatus?.isInLockRange == true {
             unlock(historytag: tag, result: result)
         } else if mechStatus?.isInUnlockRange == true {

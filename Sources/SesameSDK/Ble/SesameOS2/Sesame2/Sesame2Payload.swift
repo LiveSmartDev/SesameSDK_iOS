@@ -54,8 +54,13 @@ struct Sesame2NotifyPayload {
     
     init(data: Data) {
         var content = data.copyData
-        self.opCode = Sesame2OpCode(rawValue: content[0...0].toUInt8())
-        self.payload = content[1...].copyData
+        if content.isEmpty {
+            self.opCode = .undefine
+            self.payload = Data()
+        } else {
+            self.opCode = Sesame2OpCode(rawValue: content[0...0].toUInt8())
+            self.payload = content[1...].copyData
+        }
     }
 }
 
@@ -67,7 +72,7 @@ struct Sesame2CmdResponsePayload {
     
     init(_ data: Data) {
         var content = data.copyData
-        self.cmdItCode = SesameItemCode(rawValue: content[0...0].toUInt8())!
+        self.cmdItCode = SesameItemCode(rawValue: content[0...0].toUInt8()) ?? SesameItemCode.none
         self.cmdOpCode = Sesame2OpCode(rawValue: content[1...1].toUInt8())!
         self.cmdResultCode = SesameResultCode(rawValue: content[2...2].toUInt8())!
         self.data = content[3...].copyData

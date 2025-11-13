@@ -14,22 +14,34 @@ class CHDeviceCenter {
     static let shared = CHDeviceCenter()
     var backgroundContext: NSManagedObjectContext?
     var persistentContainer: NSPersistentContainer?
-    var cacheDevices: [CHDeviceMO]! = []
-
-    func initDevices() {
-        guard let backgroundContext = backgroundContext else {
-            L.d("🤢 初始化現有設備資料失敗")
-            return
+    var cacheDevices: [CHDeviceMO] = []
+    
+    
+    @discardableResult
+    func initDevices() -> [CHDeviceMO] {
+        backgroundContext?.performAndWait { [weak self] in
+            guard let backgroundContext = self?.backgroundContext else {
+                L.d("🤢 Failed to initialize existing devices")
+                return
+            }
+            do {
+                let fetchRequest: NSFetchRequest<CHDeviceMO> = CHDeviceMO.fetchRequest()
+                let devices = try backgroundContext.fetch(fetchRequest)
+                self?.cacheDevices = devices
+            } catch {
+                L.d("Core Data error: \(error)")
+            }
         }
-        do {
-            cacheDevices = try backgroundContext.fetch(CHDeviceMO.fetchRequest())
-        } catch {
-            L.d(error)
-        }
+        return self.cacheDevices
     }
 
     private init() {
+        // SPM和framework编译模式不同，导致modelURL的获取方式有区别。
+        #if SWIFT_PACKAGE
         let modelURL = Bundle.module.url(forResource: "CHDeviceModel", withExtension: "momd")
+        #else
+        let modelURL = Bundle(for: CHDeviceCenter.self).url(forResource: "CHDeviceModel", withExtension: "momd")
+        #endif
         let model = NSManagedObjectModel(contentsOf: modelURL!)
         self.persistentContainer = NSPersistentContainer(name: "CHDeviceCenter", managedObjectModel: model!)
         for entity in self.persistentContainer!.managedObjectModel.entities {
@@ -61,74 +73,93 @@ class CHDeviceCenter {
         initDevices()
     }
     
-    func dbURL() throws -> URL {
-        let documentDirectory = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-        return documentDirectory.appendingPathComponent("CHDeviceModel.sqlite")
-    }
-
     func appendDevice(_ CHDeviceKey: CHDeviceKey) {
-        guard let backgroundContext = backgroundContext else {
-            L.d("🤢 appendDevice failed")
-            return
+        appendDevices([CHDeviceKey])
+    }
+    
+    func appendDevices(_ CHDeviceKeys: [CHDeviceKey]) {
+        backgroundContext?.performAndWait { [weak self] in
+            guard let self = self else { return }
+            var tmpMOs = [CHDeviceMO]()
+            for deviceKey in CHDeviceKeys {
+                if deviceKey.deviceUUID.uuidString.isEmpty { continue }
+                let fetchReq = CHDeviceMO.fetchRequest()
+                fetchReq.predicate = NSPredicate(format: "deviceUUID == %@", deviceKey.deviceUUID.uuidString as CVarArg)
+                do {
+                    let results = try self.backgroundContext!.fetch(fetchReq)
+                    if let devicetoCoreData = results.first, devicetoCoreData.deviceUUID == deviceKey.deviceUUID.uuidString {
+                        // 更新coredata
+                        devicetoCoreData.updateDeviceKey(deviceKey)
+                        tmpMOs.append(devicetoCoreData)
+                    } else {
+                        // 创建coredata
+                        let newSesame2Coredata = deviceKey.toSesame2CoreData()
+                        tmpMOs.append(newSesame2Coredata)
+                    }
+                } catch let error as NSError {
+                    // 错误处理
+                    L.d("Could not fetch or save. \(error), \(error.userInfo)")
+                }
+            }
+            if self.backgroundContext!.hasChanges {
+                do {
+                    try self.backgroundContext!.save()
+                    for deviceMO in tmpMOs {
+                        if let index = self.cacheDevices.firstIndex(where: { $0.deviceUUID == deviceMO.deviceUUID }) {
+                            self.cacheDevices[index].updateDeviceKey(deviceMO)
+                        } else {
+                            self.cacheDevices.append(deviceMO)
+                        }
+                    }
+                } catch let error as NSError {
+                    // 错误处理
+                    print("Could not save context. \(error), \(error.userInfo)")
+                }
+            }
         }
-        let devicetoCoreData = CHDeviceMO(context: backgroundContext)
-        devicetoCoreData.deviceUUID = CHDeviceKey.deviceUUID.uuidString
-        devicetoCoreData.deviceModel = CHDeviceKey.deviceModel
-        devicetoCoreData.historyTag = CHDeviceKey.historyTag
-        devicetoCoreData.keyIndex = CHDeviceKey.keyIndex
-        devicetoCoreData.secretKey = CHDeviceKey.secretKey
-        devicetoCoreData.sesame2PublicKey = CHDeviceKey.sesame2PublicKey
-        deleteDevice(devicetoCoreData)//避免相同的deviceid 在 db裡面
-        cacheDevices.append(devicetoCoreData)
-        saveifNeed()
     }
     
     // MARK: - Search
-    func getDevice(deviceID: UUID?) -> CHDeviceMO?{
-        for bleDevice in self.cacheDevices where bleDevice.deviceUUID == deviceID?.uuidString {
-            return bleDevice
-        }
-        return nil
+    func getDevice(deviceID: UUID?) -> CHDeviceMO? {
+        return self.cacheDevices.first { $0.deviceUUID == deviceID?.uuidString }
     }
     
     // MARK: - Delete
     func deleteDevice(_ deviceUUID: UUID?) {
-        cacheDevices.forEach({
-            if $0.deviceUUID == deviceUUID?.uuidString
-            {
-                backgroundContext?.delete($0)
+        guard let uuidString = deviceUUID?.uuidString else { return }
+        backgroundContext?.performAndWait {
+            let devicesToDelete = self.cacheDevices.filter { $0.deviceUUID == uuidString }
+            if !devicesToDelete.isEmpty {
+                for device in devicesToDelete {
+                    self.backgroundContext?.delete(device)
+                }
+                self.saveifNeed()
+                self.cacheDevices.removeAll { $0.deviceUUID == uuidString }
             }
-        })
-        saveifNeed()
+        }
     }
 
     func deleteDevice(_ device: CHDeviceMO) {
-        cacheDevices.forEach({
-            if $0.deviceUUID == device.deviceUUID
-            {
-                backgroundContext?.delete($0)
-            }
-        })
-        saveifNeed()
+        guard device.deviceUUID?.isEmpty == false else { return }
+        deleteDevice(UUID(uuidString: device.deviceUUID!))
     }
     
     // MARK: - Utils
     func saveifNeed() {
-        guard let backgroundContext = backgroundContext else {
-            L.d("[core data]🤢 logout failed")
-            return
-        }
-        if backgroundContext.hasChanges {
-            try? backgroundContext.save()
+        guard let context = self.backgroundContext else { return }
+        context.performAndWait {
+            guard context.hasChanges else { return }
+            do {
+                try context.save()
+            } catch {
+                L.d("[core data] Error saving context: \(error)")
+            }
         }
     }
     
     func lastCachedevices() -> [CHDeviceMO] {
         // widget 不共享快取。需重新獲取資料庫
-        let request: NSFetchRequest<CHDeviceMO> = CHDeviceMO.fetchRequest()
-        let fetchResult = (try? backgroundContext?.fetch(request)) as? [CHDeviceMO]
-        cacheDevices = fetchResult ?? [CHDeviceMO]()
-        return cacheDevices
+        return self.initDevices()
     }
     
     func logout() {
@@ -136,12 +167,18 @@ class CHDeviceCenter {
             L.d("🤢 logout failed")
             return
         }
-        cacheDevices = try! backgroundContext.fetch(CHDeviceMO.fetchRequest())
-        cacheDevices.forEach({
-            backgroundContext.delete($0)
-        })
-        cacheDevices.removeAll()
-        saveifNeed() //注意
+        backgroundContext.performAndWait {
+            do {
+                let devices = try backgroundContext.fetch(CHDeviceMO.fetchRequest())
+                devices.forEach { device in
+                    backgroundContext.delete(device)
+                }
+                self.saveifNeed()
+                cacheDevices.removeAll()
+            } catch let error as NSError {
+                L.d("Core Data error: \(error)")
+            }
+        }
     }
 }
 
@@ -164,5 +201,28 @@ extension CHDeviceMO {
                               sesame2PublicKey: self.sesame2PublicKey!)
 
         return tmp
+    }
+    
+    private func ifIgnoreUpdate(_ deviceKey: CHDeviceKey) -> Bool {
+        return self.deviceUUID == deviceKey.deviceUUID.uuidString && self.deviceModel == deviceKey.deviceModel && self.historyTag == deviceKey.historyTag && self.keyIndex == deviceKey.keyIndex && self.secretKey == deviceKey.secretKey && self.sesame2PublicKey == deviceKey.sesame2PublicKey
+    }
+    
+    fileprivate func updateDeviceKey(_ deviceKey: CHDeviceKey) {
+        guard !ifIgnoreUpdate(deviceKey) else { return }
+        self.deviceUUID = deviceKey.deviceUUID.uuidString
+        self.deviceModel = deviceKey.deviceModel
+        self.historyTag = deviceKey.historyTag
+        self.keyIndex = deviceKey.keyIndex
+        self.secretKey = deviceKey.secretKey
+        self.sesame2PublicKey = deviceKey.sesame2PublicKey
+    }
+    
+    fileprivate func updateDeviceKey(_ deviceKey: CHDeviceMO) {
+        self.deviceUUID = deviceKey.deviceUUID
+        self.deviceModel = deviceKey.deviceModel
+        self.historyTag = deviceKey.historyTag
+        self.keyIndex = deviceKey.keyIndex
+        self.secretKey = deviceKey.secretKey
+        self.sesame2PublicKey = deviceKey.sesame2PublicKey
     }
 }

@@ -10,6 +10,7 @@
 
 import Foundation
 
+
 extension Dictionary {
     mutating func getOrPut(_ key: Key, backup: Value) -> Value {
         if let stored = self[key] {
@@ -20,6 +21,7 @@ extension Dictionary {
         }
     }
 }
+
 extension Data {
     static func generateRandomData(count: Int) -> Data {
         var data = Data(count: count)
@@ -32,7 +34,7 @@ extension Data {
             return Data.generateRandomData(count: count)
         }
     }
-
+    
     static func createHistag(_ keyData: Data?) ->Data{
         var tagCount_hisTag = Data()
         let histag = keyData ?? Data()
@@ -50,7 +52,6 @@ extension Data {
 //        L.d("hcia", "[histag]: \(histag.count)")
         return UInt8(histag.count).data + histag
     }
-
     
     mutating func toInt8() -> Int8 {
         var enabledBefore: Int8 = 0
@@ -103,15 +104,15 @@ extension String {
     //
     //        return data
     //    }
-
+    
     func toBase64() -> String {
         return Data(self.utf8).base64EncodedString()
     }
-
+    
     func toUUID() -> UUID? {
         return UUID(uuidString: self)
     }
-
+    
     var bytes: [UInt8] {
         return data(using: String.Encoding.utf8, allowLossyConversion: true)?.bytes ?? Array(utf8)
     }
@@ -136,7 +137,7 @@ extension String {
     func hexStringtoData() -> Data {
         return Data(hex: self)
     }
-
+    
     //sesame2 ID 生成 bleID規則。uuid -> nohashStr -> hextodata-> 前五個byte
     func sesame2IDtoBleIDData() -> Data {
         let input = self
@@ -150,7 +151,7 @@ extension Array {
         self = []
         self.reserveCapacity(reserveCapacity)
     }
-
+    
     var slice: ArraySlice<Element> {
         return self[self.startIndex ..< self.endIndex]
     }
@@ -194,28 +195,25 @@ extension Array where Element == UInt8 {
             append(b)
         }
     }
-
+    
     func toHexString() -> String {
-        return `lazy`.reduce("") {
-            var s = String($1, radix: 16)
-            if s.count == 1 {
-                s = "0" + s
-            }
-            return $0 + s
+        return reduce("") { (result, byte) in
+            let hexString = String(format: "%02x", byte)
+            return result + hexString
         }
     }
-
+    
     func toBase64() -> String {
         return Data(self).base64EncodedString()
     }
-
+    
     init(base64: String) {
         self.init()
-
+        
         guard let decodedData = Data(base64Encoded: base64) else {
             return
         }
-
+        
         append(contentsOf: decodedData.bytes)
     }
 }
@@ -225,22 +223,22 @@ extension Data {
     init(hex: String) {
         self.init([UInt8](hex: hex))
     }
-
+    
     var copyData: Data {
         return Data(Array(self))
     }
-
+    
     var bytes: [UInt8] {
         return Array(self)
     }
-
+    
     func toCutedHistag() -> Data? {
-//        let histag = content
+        //        let histag = content
         let tagcount_historyTag = self
         let tagcount = UInt8(tagcount_historyTag[0])
         var historyTag:Data?
-
-        if tagcount == 0 { 
+        
+        if tagcount == 0 {
             historyTag = nil
         } else {
             historyTag = tagcount_historyTag[safeBound: 1...Int(tagcount)]
@@ -260,46 +258,46 @@ extension Data {
             }
         }
     }
-
+    
     struct HexEncodingOptions: OptionSet {
         let rawValue: Int
         static let upperCase = HexEncodingOptions(rawValue: 1 << 0)
     }
-
+    
     //    func hexEncodedString(options: HexEncodingOptions = []) -> String {
     //        let format = options.contains(.upperCase) ? "%02hhX" : "%02hhx"
     //        return map { String(format: format, $0) }.joined()
     //    }
-
+    
     var uint16: UInt16 {
         return self.unpackValue()
     }
-
+    
     var uint8: UInt8 {
         return self.unpackValue()
     }
-
+    
     var uint32: UInt32 {
         return self.unpackValue()
     }
-
+    
     func getValue<T>(offset: Int, initialValue: T) -> T? {
-
+        
         var data: T     = initialValue
         let itemSize    = MemoryLayout.size(ofValue: data)
-
+        
         let maxOffset = count - itemSize
         guard Range(0...maxOffset).contains(offset) else {
             return nil
         }
-
+        
         let nsdata = self as NSData
-
+        
         nsdata.getBytes(&data, range: NSRange(location: offset, length: itemSize))
-
+        
         return data
     }
-
+    
     func decodeJsonDictionary() throws -> Any {
         return try JSONSerialization.jsonObject(with: self, options: .mutableContainers)
     }
@@ -372,7 +370,7 @@ extension UInt32 {
         var int = self
         return Data(bytes: &int, count: MemoryLayout<UInt32>.size)
     }
-
+    
     var byteArrayLittleEndian: [UInt8] {
         return [
             UInt8((self & 0xFF000000) >> 24),
@@ -398,7 +396,7 @@ extension URL {
             return $0.name == name
         })
         return query?.first?.value ?? "NOdata"
-
+        
     }
     
     func queryItemsAdded(_ queryItems: [URLQueryItem]) -> URL? {
@@ -415,7 +413,7 @@ extension Data {
     func divideArray(chunkSize: Int) -> [Data] {
         var result: [Data] = []
         var currentPosition = 0
-
+        
         while currentPosition < self.count {
             let nextPosition = Swift.min(currentPosition + chunkSize, self.count)
             let subdata = self.subdata(in: currentPosition..<nextPosition)
@@ -423,7 +421,7 @@ extension Data {
             
             currentPosition = nextPosition
         }
-
+        
         return result
     }
 }

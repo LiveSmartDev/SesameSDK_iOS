@@ -14,8 +14,8 @@ protocol CHSesameOS3Publish: AnyObject {
 class CHSesameOS3: CHBaseDevice ,CHSesameOS3Publish{
     func onGattSesamePublish(_ payload: SesameOS3PublishPayload) {
         let itemCode = payload.itemCode
+//        L.d("[註冊]itemCode=>",itemCode.rawValue)
         let data = payload.payload
-        
         if(itemCode == .initalization){
             self.mSesameToken = data
             if self.isRegistered {
@@ -72,10 +72,8 @@ class CHSesameOS3: CHBaseDevice ,CHSesameOS3Publish{
 
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
                 L.d("CHSesameTouchProDevice didDiscoverServices")
-        for service in peripheral.services! {
-            if(service.uuid.uuidString == "FD81"){
-                peripheral.discoverCharacteristics(nil, for: service)
-            }
+        for service in peripheral.services! where service.uuid.uuidString == "FD81"{
+            peripheral.discoverCharacteristics(nil, for: service)
         }
     }
 
@@ -88,9 +86,14 @@ class CHSesameOS3: CHBaseDevice ,CHSesameOS3Publish{
     }
 
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-            L.d("[ssm][say]: \(characteristic.value!.toHexLog())")
-        if var mesg = gattRxBuffer.feed(characteristic.value!) {
-            if mesg.type == .ciphertext { mesg.buffer = cipher!.decrypt(mesg.buffer) }
+        guard let value = characteristic.value else { return }
+        L.d("[ssm][say]: \(value.toHexLog())")
+        if var mesg = gattRxBuffer.feed(value) {
+            if mesg.type == .ciphertext {
+                if let cipher = cipher {
+                    mesg.buffer = cipher.decrypt(mesg.buffer)
+                } else { return }
+            }
             parseNotifyPayload(mesg.buffer)
         }
     }
@@ -102,24 +105,24 @@ class CHSesameOS3: CHBaseDevice ,CHSesameOS3Publish{
     func parseNotifyPayload(_ data: Data) {
 //                L.d("[ss5]: \(data.toHexLog())")
         let notify = Sesame2NotifyPayload(data: data)
-        if notify.opCode == .publish {
-            onGattSesamePublish(SesameOS3PublishPayload(data: notify.payload))
+        if notify.opCode == .publish, let pubPayload = SesameOS3PublishPayload(data: notify.payload) {
+            onGattSesamePublish(pubPayload)
 //            delegateGatt?.onGattSesamePublish(SesameOS3PublishPayload(data: notify.payload))
-        }else if notify.opCode == .response {
-            onGattSesameResponse(SesameOS3CmdResponsePayload(notify.payload))
+        } else if notify.opCode == .response, let respPayload = SesameOS3CmdResponsePayload(notify.payload) {
+            onGattSesameResponse(respPayload)
         }
     }
     private func onGattSesameResponse(_ payload: SesameOS3CmdResponsePayload) {
         //        L.d("🀄","Res <==", payload.cmdItCode.plainName, payload.cmdResultCode.plainName)
-        cmdCallBack[payload.cmdItCode]?(payload)
+        cmdCallBack[payload.cmdItCode]??(payload)
         cmdCallBack[payload.cmdItCode] = nil
         gattTxBuffer = nil
     }
 
-//#if os(iOS)
-//    deinit {
-//        CHIoTManager.shared.unsubscribeCHDeviceShadow(self as! CHDevice)
-//    }
-//#endif
+#if os(iOS)
+    deinit {
+        CHIoTManager.shared.unsubscribeCHDeviceShadow(self as! CHDevice)
+    }
+#endif
 
 }

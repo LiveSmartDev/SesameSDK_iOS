@@ -18,13 +18,13 @@ extension CHSesameBikeDevice {
                        secs: CHSesameBikeUnlockSecs,
                        result: @escaping (CHResult<CHEmpty>)) {
         
-        if checkBle(result) { return }
+        if !isBleAvailable(result) { return }
         
         let seconds = BikeLockUnlockSecs(forward: UInt8(secs.forward * 10),
                                          hold: UInt8(secs.hold * 10),
                                          backward: UInt8(secs.backward * 10))
         
-        var mechSettingCopy = (mechSetting as? CHSesameBikeMechSettings) ?? defaultMechSetting()
+        var mechSettingCopy = mechSetting ?? defaultMechSetting()
         mechSettingCopy.secs = seconds
         
         let tmpSetting = mechSettingCopy.toData()
@@ -43,7 +43,7 @@ extension CHSesameBikeDevice {
     }
     
     func getUnlockSecs(_ result: @escaping CHResult<CHSesameBikeUnlockSecs>) {
-        if checkBle(result) { return }
+        if !isBleAvailable(result) { return }
         
         sendCommand(.init(.read, .mechSetting)) { (payload) in
             if let mechSetting = CHSesameBikeMechSettings.fromData(payload.data) {

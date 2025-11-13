@@ -1,11 +1,11 @@
 //
 //  CHSesame5Device.swift
 //  SesameSDK
+//  [joi fix history]
 //  Created by tse on 2023/3/9.
 //  Copyright © 2023 CandyHouse. All rights reserved.
 //
 import Foundation
-
 class CHSesame5Device: CHSesameOS3, CHDeviceUtil ,CHSesame5 {
     
     var mechSetting: CHSesame5MechSettings?
@@ -14,7 +14,7 @@ class CHSesame5Device: CHSesameOS3, CHDeviceUtil ,CHSesame5 {
 
     public var isHistory: Bool = false { // isHistory:現在還有沒有歷史要讀的flag
         didSet {
-            if oldValue != isHistory ,isHistory{
+            if isHistory {
 //                L.d("[ss5][history] isHistory", oldValue,"->",isHistory)
                 self.readHistoryCommand(){_ in}
             }
@@ -30,6 +30,7 @@ class CHSesame5Device: CHSesameOS3, CHDeviceUtil ,CHSesame5 {
             setAdv(advertisement)
             if (self.deviceStatus.loginStatus == .logined ) {
                 isHistory = advertisement.adv_tag_b1
+//                L.d("[ss5][history]廣播內容", advertisement.adv_tag_b1)
             }
         }
     }
@@ -43,10 +44,14 @@ class CHSesame5Device: CHSesameOS3, CHDeviceUtil ,CHSesame5 {
                 mechStatus = Sesame5MechStatus.fromData(data)!
                 self.readHistoryCommand(){_ in}
                 self.deviceStatus = mechStatus!.isInLockRange  ? .locked() :.unlocked()
+                postBatteryData(data[0..<2].toHexString())
             case .mechSetting:
                 mechSetting = CHSesame5MechSettings.fromData(data)!
             case .OPS_CONTROL:
                 opsSetting = CHSesame5OpsSettings.fromData(data)!
+            case .SSM3_ITEM_CODE_BATTERY_VOLTAGE:
+                postBatteryData(data.toHexString())
+            L.d("[ops]收到上鎖秒數UInt16",opsSetting!.opsLockSecond)
         default:
             L.d("!![ss5][pub][\(itemCode.rawValue)]")
         }
@@ -64,6 +69,7 @@ struct Sesame5MechStatus: CHSesameProtocolMechStatus {
     var isInUnlockRange: Bool { return flags & 4 > 0 }
     var isStop: Bool? { return flags & 16 > 0 }
     var isBatteryCritical: Bool { return flags & 32 > 0 }
+    var isCritical: Bool? { return flags & 8 > 0 }
 
 //    public func getBatteryPrecentage() -> Int { 有必要可以自己複寫電量。這裡是範例
 //        return 0

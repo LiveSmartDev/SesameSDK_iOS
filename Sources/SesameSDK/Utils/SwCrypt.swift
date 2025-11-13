@@ -8,7 +8,6 @@
 //
 
 import Foundation
-
 class SwKeyStore {
     
     enum SecError: OSStatus, Error {

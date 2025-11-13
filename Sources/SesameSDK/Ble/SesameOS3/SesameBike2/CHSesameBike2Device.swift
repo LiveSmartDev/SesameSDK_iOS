@@ -10,6 +10,7 @@ import Foundation
 import CoreBluetooth
 
 class CHSesameBike2Device: CHSesameOS3 ,CHSesameBike2, CHDeviceUtil {
+
     var advertisement: BleAdv? {
         didSet{
             guard let advertisement = advertisement else {
@@ -20,26 +21,45 @@ class CHSesameBike2Device: CHSesameOS3 ,CHSesameBike2, CHDeviceUtil {
         }
     }
     
-    override func onGattSesamePublish(_ payload: SesameOS3PublishPayload) {
+    override  func onGattSesamePublish(_ payload: SesameOS3PublishPayload) {
         super.onGattSesamePublish(payload)
         let itemCode = payload.itemCode
         let data = payload.payload
         switch itemCode {
         case .mechStatus:
-            mechStatus = CHSesameBike2MechStatus.fromData(data)!
+            if data.count == 7 {
+                mechStatus = Sesame5MechStatus.fromData(data)!
+            } else {
+                mechStatus = CHSesameBike2MechStatus.fromData(data)!
+            }
             self.deviceStatus = mechStatus!.isInLockRange  ? .locked() :.unlocked()
-
+            postBatteryData(data[0..<2].toHexString())
+        case .SSM3_ITEM_CODE_BATTERY_VOLTAGE:
+            postBatteryData(data.toHexString())
         default:
             L.d("[bk2][publish]!![\(itemCode.rawValue)]")
         }
     }
 }
 
-extension CHSesameBike2Device {
-    public func unlock(historytag: Data?, result: @escaping (CHResult<CHEmpty>))  {
-        if (self.checkBle(result)) { return }
-        let hisTag = Data.createOS2Histag(historytag ?? self.sesame2KeyData?.historyTag)
 
+extension CHSesameBike2Device {
+
+    public func unlock(historytag: Data?, result: @escaping (CHResult<CHEmpty>))  {
+        if deviceShadowStatus != nil,
+           deviceStatus.loginStatus == .unlogined {
+            CHIoTManager.shared.sendCommandToWM2(SesameItemCode.unlock, Data(), self) { _ in
+                result(.success(CHResultStateNetworks(input: CHEmpty())))
+            }
+            return
+        }
+        if (!self.isBleAvailable(result)) {
+            CHIoTManager.shared.sendCommandToWM2(SesameItemCode.unlock, Data(), self) { _ in
+                result(.success(CHResultStateNetworks(input: CHEmpty())))
+            }
+            return
+        }
+        let hisTag = Data.createOS2Histag(historytag ?? self.sesame2KeyData?.historyTag)
         sendCommand(.init(.unlock,hisTag)) { responsePayload in
 //            L.d("[bk2][unlock][sendCommand] res =>",responsePayload.cmdResultCode)
             if responsePayload.cmdResultCode == .success {
@@ -55,10 +75,11 @@ extension CHSesameBike2Device {
     }
 
     public func getVersionTag(result: @escaping (CHResult<String>))  {
-        if(checkBle(result)){return}
+        if(!isBleAvailable(result)){return}
         sendCommand(.init(.versionTag)) { (response) in
             if response.cmdResultCode == .success {
                 let versionTag = String(data: response.data, encoding: .utf8) ?? ""
+                L.d("[bk2][getVersionTag =>]",versionTag)
                 result(.success(CHResultStateNetworks(input: versionTag)))
             } else {
                 result(.failure(self.errorFromResultCode(response.cmdResultCode)))
@@ -67,7 +88,7 @@ extension CHSesameBike2Device {
     }
 
     func reset(result: @escaping (CHResult<CHEmpty>)) {
-        if (self.checkBle(result)) { return }
+        if (!self.isBleAvailable(result)) { return }
         sendCommand(.init(.reset)) { (responsePayload) in
             self.dropKey { dropResult in
                 switch dropResult {
@@ -86,56 +107,27 @@ extension CHSesameBike2Device {
         }
         self.deviceStatus = .bleLogining()
         let sessionAuth: Data = token?.hexStringtoData() ?? CC.CMAC.AESCMAC(sessionToken, key: sesame2KeyData.secretKey.hexStringtoData())
-        
         self.cipher = SesameOS3BleCipher(name: self.deviceId.uuidString,sessionKey: sessionAuth,sessionToken:("00"+sessionToken.toHexString()).hexStringtoData())
-        
         self.commandQueue = DispatchQueue(label: deviceId.uuidString, qos: .userInitiated)
         sendCommand(.init(.login, sessionAuth[0...3]), isCipher: .plaintext) { res in
-            let time = Sesame5Time.fromData(res.data).time
+//            L.d("[bk2][login]",res.data.toHexString())
+            let  time = Sesame5Time.fromData(res.data).time
             let sesameTime = Date(timeIntervalSince1970: TimeInterval(time))
+//            L.d("[bk2][time]", sesameTime.description(with: .current))
+//            L.d("[bk2][phonetime]", Date().description(with: .current))
+
             let timeErrorInterval = sesameTime.timeIntervalSince1970 - Date().timeIntervalSince1970
+//            L.d("[ss5][timeErrorInterval]", timeErrorInterval)
             if abs(timeErrorInterval) > 3 {
+//                L.d("[bk2][timeErrorInterval>3]", timeErrorInterval)
                 var timestamp: UInt32 = UInt32(Date().timeIntervalSince1970)
                 let timestampData = Data(bytes: &timestamp,count: MemoryLayout.size(ofValue: timestamp))
                 self.sendCommand(.init(.time,timestampData)) { res in
+//                    L.d("[bk2][cmd]", timeErrorInterval,res.cmdResultCode.plainName)
                 }
             }
         }
     }
-}
 
-extension CHSesameBike2Device {
-    public func register(result: @escaping CHResult<CHEmpty>)  {
-        if deviceStatus != .readyToRegister() {
-            result(.failure(NSError.deviceStatusNotReadyToRegister))
-            return
-        }
-        deviceStatus = .registering()
 
-        let date = Date()
-        var timestamp: UInt32 = UInt32(date.timeIntervalSince1970)
-        let timestampData = Data(bytes: &timestamp,count: MemoryLayout.size(ofValue: timestamp))
-        let payload = Data(appKeyPair.publicKey)+timestampData
-        self.commandQueue = DispatchQueue(label:deviceId.uuidString, qos: .userInitiated)
-        
-        self.sendCommand(.init(.registration, payload), isCipher: .plaintext) { response in
-            self.mechStatus = CHSesameBike2MechStatus.fromData(response.data[0...2])!
-                let ecdhSecretPre16 = Data(self.appKeyPair.ecdh(remotePublicKey: response.data[3...66].bytes))[0...15]
-
-            self.cipher = SesameOS3BleCipher(name: self.deviceId.uuidString, sessionKey: CC.CMAC.AESCMAC(self.mSesameToken!, key: ecdhSecretPre16),sessionToken: ("00"+self.mSesameToken!.toHexString()).hexStringtoData())
-
-            self.sesame2KeyData = CHDeviceKey(// 建立設備
-                deviceUUID: self.deviceId,
-                deviceModel: self.productModel.deviceModel(),
-                historyTag: nil,
-                keyIndex: "0000",
-                secretKey: ecdhSecretPre16.toHexString(),
-                sesame2PublicKey: self.mSesameToken!.toHexString()
-            )
-            self.isRegistered = true // 設定為已註冊
-            self.deviceStatus = self.mechStatus!.isInLockRange ?.locked() :.unlocked()
-            CHDeviceCenter.shared.appendDevice(self.sesame2KeyData!)
-            result(.success(CHResultStateNetworks(input: CHEmpty())))
-        }
-    }
 }
